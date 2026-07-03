@@ -43,7 +43,10 @@ class CruzVerdeScraper(BaseScraper):
             await page.wait_for_timeout(2000)
             await page.fill(_SEARCH_INPUT_SELECTOR, query, timeout=10_000)
             await page.keyboard.press("Enter")
-            await page.wait_for_timeout(5000)
+            try:
+                await page.locator(_CARD_SELECTOR).first.wait_for(state="attached", timeout=15_000)
+            except Exception:
+                pass  # genuinely no results for this query — fall through with an empty card list
 
             cards = await page.locator(_CARD_SELECTOR).all()
             products = []
