@@ -197,12 +197,17 @@ function resultsTable(results) {
 // ── Results rendering ─────────────────────────────────────────────────────────
 
 function renderResults(container, data) {
-  const { query, count, results, errors } = data;
+  const { query, count, results, errors, pending } = data;
 
   let html = `<div class="results-header">
     <h2>${count} resultado${count !== 1 ? "s" : ""} para "<strong>${escHtml(query)}</strong>"</h2>
     ${count > 0 ? `<button class="btn-export" id="btn-export">Exportar CSV</button>` : ""}
   </div>`;
+
+  if (pending?.length) {
+    const names = pending.map(id => storeDisplayName(id)).join(", ");
+    html += `<div class="pending-banner"><span class="spinner-inline"></span> Buscando aún en: ${escHtml(names)}…</div>`;
+  }
 
   if (errors?.length) {
     html += `<div class="error-banner">⚠️ Farmacias sin respuesta: ${errors.map(e => escHtml(e.store)).join(", ")}</div>`;
@@ -210,7 +215,9 @@ function renderResults(container, data) {
 
   html += results.length
     ? resultsTable(results)
-    : `<div class="empty-state">😕 Sin resultados<p>Prueba con otro nombre de medicamento.</p></div>`;
+    : (pending?.length
+        ? ""
+        : `<div class="empty-state">😕 Sin resultados<p>Prueba con otro nombre de medicamento.</p></div>`);
 
   container.innerHTML = html;
   document.getElementById("btn-export")?.addEventListener("click", () => exportCSV(query, results));
@@ -323,9 +330,29 @@ searchForm.addEventListener("submit", async e => {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.detail || `HTTP ${res.status}`);
     }
-    const data = await res.json();
-    renderResults(resultsArea, data);
-    if (data.count > 0) saveToHistory(query);
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let lastData = null;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const parts = buffer.split("\n\n");
+      buffer = parts.pop();  // keep incomplete last chunk
+
+      for (const part of parts) {
+        if (!part.startsWith("data: ")) continue;
+        const data = JSON.parse(part.slice(6));
+        lastData = data;
+        renderResults(resultsArea, data);  // re-render on every store that finishes
+      }
+    }
+
+    if (lastData?.count > 0) saveToHistory(query);
   } catch (err) {
     resultsArea.innerHTML = `<div class="error-banner">Error: ${escHtml(err.message)}</div>`;
   } finally {

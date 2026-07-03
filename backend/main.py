@@ -148,6 +148,53 @@ async def _do_search(query: str, stores: str, max_results: int) -> dict:
     return result
 
 
+async def _search_one(store_id: str, query: str, max_results: int):
+    try:
+        return store_id, await SCRAPERS[store_id].search(query, max_results), None
+    except Exception as exc:
+        return store_id, None, exc
+
+
+async def _do_search_stream(query: str, stores: str, max_results: int):
+    """Same as _do_search, but yields a growing snapshot as each store finishes
+    instead of waiting for the slowest one (Cruz Verde) before returning anything."""
+    selected = sorted({s.strip() for s in stores.split(",") if s.strip() in SCRAPERS})
+    if not selected:
+        yield {"query": query, "count": 0, "results": [], "errors": [], "pending": [], "done": True}
+        return
+
+    cache_key = (query.lower().strip(), tuple(selected), max_results)
+    cached = _cache_get(cache_key)
+    if cached is not None:
+        yield {**cached, "pending": [], "done": True}
+        return
+
+    combined, errors = [], []
+    pending = set(selected)
+    tasks = [asyncio.create_task(_search_one(s, query, max_results)) for s in selected]
+
+    for task in asyncio.as_completed(tasks):
+        store_id, result, exc = await task
+        pending.discard(store_id)
+        if exc is not None:
+            errors.append({"store": store_id, "error": str(exc)})
+        else:
+            combined.extend([p.to_dict() for p in result])
+        combined.sort(key=lambda p: p["price"] if p["price"] is not None else float("inf"))
+        yield {
+            "query": query,
+            "count": len(combined),
+            "results": list(combined),
+            "errors": list(errors),
+            "pending": sorted(pending),
+            "done": False,
+        }
+
+    final = {"query": query, "count": len(combined), "results": combined, "errors": errors}
+    _cache_set(cache_key, final)
+    yield {**final, "pending": [], "done": True}
+
+
 # ── Routes ────────────────────────────────────────────────────────────────────
 
 
@@ -177,7 +224,11 @@ async def search(
     stores: str = Query(default="salcobrand,ahumada,drsimi"),
     max_results: int = Query(default=10, ge=1, le=MAX_RESULTS),
 ):
-    return await _do_search(query, stores, max_results)
+    async def generate():
+        async for payload in _do_search_stream(query, stores, max_results):
+            yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
+
+    return StreamingResponse(generate(), media_type="text/event-stream")
 
 
 @app.post("/api/search-batch")

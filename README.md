@@ -50,10 +50,10 @@ busca-medicamentos/
 
 ## API
 
-El backend expone una API REST en `http://localhost:8000`, con el mismo contrato que `buscaprecios`:
+El backend expone una API REST en `http://localhost:8000`:
 
-- `GET /api/search?query={q}&stores={ids}&max_results={n}` — búsqueda simple (rate limit 20/min)
-- `POST /api/search-batch` — búsqueda en lote vía CSV, respuesta como Server-Sent Events (rate limit 5/min)
+- `GET /api/search?query={q}&stores={ids}&max_results={n}` — búsqueda simple. A diferencia de `buscaprecios`, responde como **Server-Sent Events**: cada farmacia que termina emite un evento con el snapshot acumulado de resultados (ordenado y con `pending` = farmacias que aún faltan), en vez de esperar a que las 4 terminen. Como Cruz Verde (Playwright) es mucho más lenta que las otras 3, esto evita que una búsqueda que podría mostrarse en ~1s quede bloqueada ~13s esperándola (rate limit 20/min)
+- `POST /api/search-batch` — búsqueda en lote vía CSV, respuesta como Server-Sent Events, un evento por medicamento del lote (rate limit 5/min)
 - `GET /api/stores` — lista de farmacias disponibles
 
 ## Cómo funciona cada scraper
