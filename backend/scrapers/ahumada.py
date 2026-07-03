@@ -9,12 +9,17 @@ _BASE_URL = "https://www.farmaciasahumada.cl"
 
 def _extract_price(tile) -> tuple[float | None, str]:
     # The current/promotional price only ever appears as plain "$X.XXX" text
-    # inside span.sales — there is no clean numeric attribute for it.
+    # inside span.sales — there is no clean numeric attribute for it. Some
+    # tiles also render a "-XX%" discount badge in the same span, so match
+    # just the "$..." amount instead of stripping digits from the whole text
+    # (which would concatenate the badge's digits into the price).
     sales = tile.select_one("span.sales")
     if sales:
-        digits = re.sub(r"[^\d]", "", sales.get_text())
-        if digits:
-            return format_clp_price(digits)
+        match = re.search(r"\$\s*([\d.,]+)", sales.get_text())
+        if match:
+            digits = re.sub(r"[^\d]", "", match.group(1))
+            if digits:
+                return format_clp_price(digits)
     return None, "Sin precio"
 
 
