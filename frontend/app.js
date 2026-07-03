@@ -113,6 +113,23 @@ function safeUrl(url) {
   } catch { return "#"; }
 }
 
+// ── Promotions / discounts ──────────────────────────────────────────────────────
+
+function discountPct(p) {
+  if (!p.original_price || p.price === null || p.original_price <= p.price) return null;
+  return Math.round(((p.original_price - p.price) / p.original_price) * 100);
+}
+
+function promoBadge(p) {
+  const pct = discountPct(p);
+  return pct !== null ? `<span class="promo-badge">-${pct}%</span>` : "";
+}
+
+function originalPriceLine(p) {
+  const pct = discountPct(p);
+  return pct !== null ? `<span class="price-original">${escHtml(p.original_price_text)}</span>` : "";
+}
+
 function productCard(p) {
   const img = p.image
     ? `<img class="product-img" src="${p.image}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
@@ -124,7 +141,8 @@ function productCard(p) {
       <div class="product-body">
         <span class="badge ${badgeClass(p.store_id)}">${escHtml(storeDisplayName(p.store_id))}</span>
         <p class="product-name">${escHtml(p.name)}</p>
-        <p class="product-price">${escHtml(p.price_text)}</p>
+        ${promoBadge(p)}
+        <p class="product-price">${escHtml(p.price_text)} ${originalPriceLine(p)}</p>
         <p class="product-store">${escHtml(storeDisplayName(p.store_id))}</p>
         <a class="product-link" href="${safeUrl(p.url)}" target="_blank" rel="noopener noreferrer">Ver producto →</a>
       </div>
@@ -154,7 +172,11 @@ function resultsTable(results) {
     <tr>
       <td><span class="badge ${badgeClass(p.store_id)}">${escHtml(storeDisplayName(p.store_id))}</span></td>
       <td class="col-name"><a href="${safeUrl(p.url)}" target="_blank" rel="noopener noreferrer">${escHtml(p.name)}</a></td>
-      <td class="col-price">${escHtml(p.price_text)}</td>
+      <td class="col-price">
+        ${promoBadge(p)}
+        <div>${escHtml(p.price_text)}</div>
+        ${originalPriceLine(p)}
+      </td>
       <td class="col-dev">${deviationBadge(p.price, avg)}</td>
     </tr>`).join("");
 
@@ -232,22 +254,36 @@ function downloadCsv(filename, rows) {
 
 function exportCSV(query, results) {
   const avg = avgPrice(results);
-  const rows = [["Medicamento", "Precio", "Desviación del promedio", "Farmacia", "URL"]];
+  const rows = [["Medicamento", "Precio", "Precio normal", "Descuento", "Desviación del promedio", "Farmacia", "URL"]];
   results.forEach(p => {
     let dev = "—";
     if (p.price !== null && avg !== null) {
       const pct = ((p.price - avg) / avg) * 100;
       dev = Math.abs(pct) < 0.5 ? "≈ promedio" : `${pct > 0 ? "+" : ""}${pct.toFixed(1)}%`;
     }
-    rows.push([p.name, p.price_text, dev, storeDisplayName(p.store_id), p.url]);
+    const pct = discountPct(p);
+    rows.push([
+      p.name, p.price_text,
+      pct !== null ? p.original_price_text : "",
+      pct !== null ? `-${pct}%` : "",
+      dev, storeDisplayName(p.store_id), p.url,
+    ]);
   });
   downloadCsv(`buscamedicamentos-${query.replace(/\s+/g, "_")}.csv`, rows);
 }
 
 function exportBatchCSV(allResults) {
-  const rows = [["Búsqueda", "Medicamento", "Precio", "Farmacia", "URL"]];
+  const rows = [["Búsqueda", "Medicamento", "Precio", "Precio normal", "Descuento", "Farmacia", "URL"]];
   Object.entries(allResults).forEach(([q, data]) => {
-    data.results.forEach(p => rows.push([q, p.name, p.price_text, storeDisplayName(p.store_id), p.url]));
+    data.results.forEach(p => {
+      const pct = discountPct(p);
+      rows.push([
+        q, p.name, p.price_text,
+        pct !== null ? p.original_price_text : "",
+        pct !== null ? `-${pct}%` : "",
+        storeDisplayName(p.store_id), p.url,
+      ]);
+    });
   });
   downloadCsv("buscamedicamentos-lote.csv", rows);
 }

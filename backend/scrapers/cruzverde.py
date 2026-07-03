@@ -1,5 +1,5 @@
 import re
-from .base import BaseScraper, Product, format_clp_price
+from .base import BaseScraper, Product, resolve_discount
 
 _BASE_URL = "https://www.cruzverde.cl"
 _CARD_SELECTOR = (
@@ -79,7 +79,14 @@ class CruzVerdeScraper(BaseScraper):
         if await sale_el.count() > 0:
             digits = re.sub(r"[^\d]", "", (await sale_el.text_content()) or "")
             price_val = digits or None
-        price, price_text = format_clp_price(price_val)
+
+        list_el = card.locator("p.line-through").first
+        original_val = None
+        if await list_el.count() > 0:
+            digits = re.sub(r"[^\d]", "", (await list_el.text_content()) or "")
+            original_val = digits or None
+
+        price, price_text, original_price, original_price_text = resolve_discount(price_val, original_val)
 
         sku_match = re.search(r"/(\d+)\.html", href or "")
         sku = sku_match.group(1) if sku_match else None
@@ -93,4 +100,6 @@ class CruzVerdeScraper(BaseScraper):
             store="Cruz Verde",
             store_id="cruzverde",
             sku=sku,
+            original_price=original_price,
+            original_price_text=original_price_text,
         )

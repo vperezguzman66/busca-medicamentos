@@ -1,5 +1,5 @@
 import httpx
-from .base import BaseScraper, Product, format_clp_price
+from .base import BaseScraper, Product, resolve_discount
 
 _ALGOLIA_URL = "https://GM3RP06HJG-dsn.algolia.net/1/indexes/sb_variant_production/query"
 _ALGOLIA_APP_ID = "GM3RP06HJG"
@@ -34,7 +34,9 @@ class SalcoBrandScraper(BaseScraper):
                 # Direct discount (if any) beats the normal price, like Homecenter's priority list
                 discount = hit.get("direct_discount")
                 price_val = discount if discount else hit.get("normal_price")
-                price, price_text = format_clp_price(price_val)
+                price, price_text, original_price, original_price_text = resolve_discount(
+                    price_val, hit.get("normal_price")
+                )
 
                 slug = hit.get("slug", "")
                 products.append(
@@ -47,6 +49,8 @@ class SalcoBrandScraper(BaseScraper):
                         store="SalcoBrand",
                         store_id="salcobrand",
                         sku=hit.get("sku") or str(hit.get("id", "")),
+                        original_price=original_price,
+                        original_price_text=original_price_text,
                     )
                 )
             except (KeyError, TypeError):

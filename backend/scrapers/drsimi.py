@@ -1,5 +1,5 @@
 import httpx
-from .base import BaseScraper, Product, format_clp_price
+from .base import BaseScraper, Product, resolve_discount
 
 _SEARCH_URL = "https://farmaciasdeldrsimicl.vtexcommercestable.com.br/api/catalog_system/pub/products/search"
 _BASE_URL = "https://www.drsimi.cl"
@@ -30,7 +30,9 @@ class DrSimiScraper(BaseScraper):
                 seller = item["sellers"][0]["commertialOffer"]
                 # Prefer the seller's active Price; fall back to ListPrice if unavailable
                 price_val = seller.get("Price") or seller.get("ListPrice")
-                price, price_text = format_clp_price(price_val)
+                price, price_text, original_price, original_price_text = resolve_discount(
+                    price_val, seller.get("ListPrice")
+                )
 
                 link_text = p.get("linkText", "")
                 image = (item.get("images") or [{}])[0].get("imageUrl")
@@ -45,6 +47,8 @@ class DrSimiScraper(BaseScraper):
                         store="Doctor Simi",
                         store_id="drsimi",
                         sku=item.get("itemId"),
+                        original_price=original_price,
+                        original_price_text=original_price_text,
                     )
                 )
             except (KeyError, IndexError, TypeError):

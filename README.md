@@ -5,6 +5,7 @@ Aplicación web para comparar precios de medicamentos en las principales farmaci
 ## Características
 
 - **Búsqueda simple** — escribe un medicamento y obtén resultados de todas las farmacias en paralelo, ordenados de menor a mayor precio
+- **Promociones y descuentos** — cuando una farmacia muestra un precio rebajado, se ve el % de descuento y el precio normal tachado
 - **Búsqueda en lote (CSV)** — sube un archivo con hasta 30 medicamentos; los resultados llegan en tiempo real con barra de progreso
 - **Exportar a CSV** — descarga los resultados en formato compatible con Excel (con BOM para acentos)
 - **Filtro por farmacia** — selecciona en qué farmacias buscar
