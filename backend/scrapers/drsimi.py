@@ -1,4 +1,5 @@
 import httpx
+from urllib.parse import quote
 from .base import BaseScraper, Product, resolve_discount
 
 _SEARCH_URL = "https://farmaciasdeldrsimicl.vtexcommercestable.com.br/api/catalog_system/pub/products/search"
@@ -10,9 +11,12 @@ class DrSimiScraper(BaseScraper):
         headers = {**self.HEADERS, "Accept": "application/json"}
         try:
             async with httpx.AsyncClient(timeout=15) as client:
+                # The ?ft=<term> form 400s on any multi-word query ("Scripts are
+                # not allowed!" — a WAF rule, not a real syntax issue). Passing
+                # the term as a path segment with map=ft avoids it entirely.
                 resp = await client.get(
-                    _SEARCH_URL,
-                    params={"ft": query, "_from": 0, "_to": max(max_results - 1, 0)},
+                    f"{_SEARCH_URL}/{quote(query, safe='')}",
+                    params={"map": "ft", "_from": 0, "_to": max(max_results - 1, 0)},
                     headers=headers,
                 )
                 resp.raise_for_status()
