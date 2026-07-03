@@ -1,10 +1,21 @@
+import re
 import httpx
+from urllib.parse import quote
 from .base import BaseScraper, Product, resolve_discount
 
 _ALGOLIA_URL = "https://GM3RP06HJG-dsn.algolia.net/1/indexes/sb_variant_production/query"
 _ALGOLIA_APP_ID = "GM3RP06HJG"
 _ALGOLIA_API_KEY = "0259fe250b3be4b1326eb85e47aa7d81"
 _BASE_URL = "https://salcobrand.cl"
+
+# Algolia's analyzer returns 0 hits for any query containing "/", so combo
+# dosages written as "40/10" (common for medications) never match anything.
+# Rewriting each side as its own "mg" token ("40mg 10mg") searches correctly.
+_DOSE_SLASH_RE = re.compile(r"(\d+(?:\.\d+)?)\s*(?:mg)?\s*/\s*(\d+(?:\.\d+)?)\s*(?:mg)?", re.IGNORECASE)
+
+
+def _normalize_query(query: str) -> str:
+    return _DOSE_SLASH_RE.sub(r"\1mg \2mg", query)
 
 
 class SalcoBrandScraper(BaseScraper):
@@ -15,7 +26,7 @@ class SalcoBrandScraper(BaseScraper):
             "Referer": f"{_BASE_URL}/",
             "Content-Type": "application/json",
         }
-        params = f"query={query}&hitsPerPage={max_results}"
+        params = f"query={quote(_normalize_query(query))}&hitsPerPage={max_results}"
         try:
             async with httpx.AsyncClient(timeout=15) as client:
                 resp = await client.post(
