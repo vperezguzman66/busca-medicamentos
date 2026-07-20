@@ -1,7 +1,7 @@
-fastapi==0.115.5
-uvicorn[standard]==0.32.1
-httpx==0.28.1
-python-multipart==0.0.20
-slowapi==0.1.9
-beautifulsoup4==4.12.3
-playwright==1.49.0
+fastapi>=0.115.5
+uvicorn[standard]>=0.32.1
+httpx>=0.28.1
+python-multipart>=0.0.20
+slowapi>=0.1.9
+beautifulsoup4>=4.12.3
+playwright>=1.55
