@@ -65,6 +65,7 @@ SalcoBrand corre sobre Spree Commerce, pero el buscador del sitio usa **Algolia*
 - **Búsqueda:** `POST https://GM3RP06HJG-dsn.algolia.net/1/indexes/sb_variant_production/query` con header `Referer: https://salcobrand.cl/`
 - **Precio:** `direct_discount` si existe (precio con descuento directo), si no `normal_price`
 - **URL del producto:** `https://salcobrand.cl/products/{slug}`
+- El analizador de Algolia devuelve 0 resultados para cualquier query con `/`, así que dosis combinadas como "colmibe 40/10" nunca calzaban con nada. Se normaliza cada lado como su propio token `mg` (`40mg 10mg`) antes de buscar.
 
 ### Farmacias Ahumada
 
@@ -77,7 +78,7 @@ Ahumada corre sobre Salesforce Commerce Cloud (Demandware). La página de búsqu
 
 El dominio correcto es **`www.drsimi.cl`** (no `farmaciasdrsimi.cl`, que no resuelve). Corre sobre VTEX (cuenta `farmaciasdeldrsimicl`), con la API legacy de catálogo pública y sin autenticación.
 
-- **Búsqueda:** `GET https://farmaciasdeldrsimicl.vtexcommercestable.com.br/api/catalog_system/pub/products/search?ft={query}`
+- **Búsqueda:** `GET https://farmaciasdeldrsimicl.vtexcommercestable.com.br/api/catalog_system/pub/products/search/{query}?map=ft`. La forma clásica `?ft={query}` responde 400 ("Scripts are not allowed!") para cualquier búsqueda de 2+ palabras — es una regla del WAF, no un error de sintaxis. Pasar el término como segmento de la URL con `map=ft` evita el bloqueo.
 - **Precio:** `items[0].sellers[0].commertialOffer.Price` (fallback a `ListPrice`)
 - **URL del producto:** `https://www.drsimi.cl/{linkText}/p`
 
