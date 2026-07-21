@@ -2,6 +2,8 @@ import asyncio
 import csv
 import io
 import json
+import os
+import sys
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -82,12 +84,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-import os as _os, sys as _sys
-
-if getattr(_sys, "frozen", False):
-    FRONTEND_DIR = Path(_sys._MEIPASS) / "frontend"
+if getattr(sys, "frozen", False):
+    FRONTEND_DIR = Path(sys._MEIPASS) / "frontend"
 else:
-    FRONTEND_DIR = Path(_os.environ.get("BUSCAMEDICAMENTOS_BASE", str(Path(__file__).parent.parent))) / "frontend"
+    FRONTEND_DIR = Path(os.environ.get("BUSCAMEDICAMENTOS_BASE", str(Path(__file__).parent.parent))) / "frontend"
 
 MAX_RESULTS = 20
 MAX_CSV_BYTES = 100 * 1024  # 100 KB

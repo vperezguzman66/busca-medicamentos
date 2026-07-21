@@ -2,10 +2,7 @@ import re
 from .base import BaseScraper, Product, resolve_discount
 
 _BASE_URL = "https://www.cruzverde.cl"
-_CARD_SELECTOR = (
-    "div.max-w-xs.w-full.h-full.border.border-gray-light.bg-white.shadow"
-    ".text-center.overflow-hidden"
-)
+_CARD_SELECTOR = "div.max-w-xs.w-full.h-full.border.border-gray-light.bg-white.shadow.text-center.overflow-hidden"
 _SEARCH_INPUT_SELECTOR = "input[type=search], input[placeholder*='uscar' i], input[name*='search' i]"
 
 _USER_AGENT = (
@@ -34,9 +31,7 @@ class CruzVerdeScraper(BaseScraper):
             locale="es-CL",
             extra_http_headers={"Accept-Language": "es-CL,es;q=0.9"},
         )
-        await context.add_init_script(
-            "Object.defineProperty(navigator, 'webdriver', {get: () => undefined});"
-        )
+        await context.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined});")
         try:
             page = await context.new_page()
             await page.goto(_BASE_URL, wait_until="domcontentloaded", timeout=45_000)
